@@ -30,7 +30,7 @@ void popBoard(bool (&board)[DIMY][DIMX]) {
 		for (int x = 0; x < DIMX; x++) {
 			board[y][x] = rand() % 2;
 		}
-	}
+	} 
 }
 
 void updateBoard(bool(&board)[DIMY][DIMX]) {
