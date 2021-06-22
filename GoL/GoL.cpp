@@ -9,7 +9,13 @@
 
 #define DIMX 60
 #define DIMY 29
-#define frameTime 10
+#define frameTime 70
+#define pauseTime 100
+
+
+HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+RECT rectClient, rectWindow;
+HWND hWnd = GetConsoleWindow();
 
 void printBoard(bool (&board)[DIMY][DIMX]) {
 	std::string print;
@@ -77,17 +83,74 @@ void updateBoard(bool(&board)[DIMY][DIMX]) {
 }
 
 int main() {
-	static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
 	bool board[DIMY][DIMX] = {0};
 
-	popBoard(board);
-	while (true) {
-		printBoard(board);
-		updateBoard(board);
+	POINT p;
+	int pos[2];
 
-		//sleep till next frame
-		std::this_thread::sleep_for(std::chrono::milliseconds(frameTime));		
-		SetConsoleCursorPosition(hConsole, COORD{0,0});
+	bool running = true;
+	bool pause = false;
+	bool newFrame = true;
+
+	auto start = std::chrono::steady_clock::now();
+
+	bool spacekey = false;
+	bool lmb = false;
+
+	while (running) {
+		if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+			if (spacekey == false && !pause) pause = true;
+			else if (spacekey == false && pause) pause = false;
+			spacekey = true;
+		}
+		else spacekey = false;
+
+		//stops running loop if you press escape
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) running = false;
+
+		//clears board if you press c
+		if (GetAsyncKeyState('C') & 0x8000) {
+			for (int y = 0; y < DIMY; y++) {
+				for (int x = 0; x < DIMX; x++) {
+					board[y][x] = 0;
+				}
+			}
+		}
+
+		//create random board if you press x
+		if (GetAsyncKeyState('X') & 0x8000) {
+			popBoard(board);
+		}
+
+		if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
+			GetClientRect(hWnd, &rectClient);
+			GetWindowRect(hWnd, &rectWindow);
+			GetCursorPos(&p);
+			pos[0] = (p.x - rectWindow.left) / 15;
+			pos[1] = (p.y - rectWindow.top - 30) / 16;
+			if (pos[0] <= DIMX && pos[0] >= 0 && pos[1] <= DIMY && pos[1] >= 0) {
+				if (lmb == false && !board[pos[1]][pos[0]]) board[pos[1]][pos[0]] = 1;
+				else if (lmb == false && board[pos[1]][pos[0]]) board[pos[1]][pos[0]] = 0;
+			}
+			lmb = true;
+		}
+		else lmb = false;
+
+		if (newFrame) {
+			printBoard(board);
+			if (!pause) updateBoard(board);
+			std::cout << "[esc] Quit		[space] Pause		  [c] Clear Board  		[x] Create New Random Board";
+
+			SetConsoleCursorPosition(hConsole, COORD{ 0,0 });
+			newFrame = false;
+		}
+
+		//create new frame every 70 ms
+		auto end = std::chrono::steady_clock::now();
+
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() > frameTime) {
+			start = std::chrono::steady_clock::now();
+			newFrame = true;
+		}
 	}
 }
