@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <chrono>
 
+
 #define DIMX 60
 #define DIMY 29
-#define frameTime 70
-#define pauseTime 100
+#define SPEEDMAX 5
 
 
 HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -93,6 +93,16 @@ void updateBoard(bool(&board)[DIMY][DIMX]) {
 int main() {
 	bool board[DIMY][DIMX] = {0};
 
+	int speeds[5] = {
+		200,
+		100,
+		70,
+		35,
+		10
+	};
+
+	int curSpeed = 2;
+
 	RECT rectClient, rectWindow;
 
 	POINT p;
@@ -103,9 +113,12 @@ int main() {
 	bool newFrame = true;
 
 	auto start = std::chrono::steady_clock::now();
+	int frameTime = speeds[curSpeed];
 
 	bool spacekey = false;
 	bool lmb = false;
+	bool arUp = false;
+	bool arDown = false;
 
 	while (running) {
 		//sets pause if you press space
@@ -129,10 +142,25 @@ int main() {
 			}
 		}
 
-		//create random board if you press x
-		if (GetAsyncKeyState('X') & 0x8000) {
-			popBoard(board);
+		//raises speed if you press right arrow
+		if (GetAsyncKeyState(VK_RIGHT) & 0x8000 && curSpeed < SPEEDMAX - 1) {
+			if (!arUp) curSpeed++;
+			arUp = true;
 		}
+		else arUp = false;
+
+		//lowers speed if you press left arrow
+		if (GetAsyncKeyState(VK_LEFT) & 0x8000 && curSpeed > 0) {
+			if (!arDown) curSpeed--;
+			arDown = true;
+		}
+		else arDown = false;
+
+		//update frame speed
+		frameTime = speeds[curSpeed];
+
+		//create random board if you press x
+		if (GetAsyncKeyState('X') & 0x8000) popBoard(board);
 
 		//creates or erases square when you click
 		if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
@@ -158,7 +186,10 @@ int main() {
 		if (newFrame) {
 			printBoard(board);
 			if (!pause) updateBoard(board);
-			std::cout << "[esc] Quit		[space] Pause		  [c] Clear Board  		[x] Create New Random Board";
+			std::cout << "                                                                                                                      ";
+			SetConsoleCursorPosition(hConsole, COORD{ 0,29 });
+			std::cout << "[esc] Quit	  [space] Pause	     [c] Clear Board	   [x] Create New Random Board	    [arrows] Speed";
+			for (int i = 0; i < curSpeed + 1; i++) std::cout << " -";
 
 			SetConsoleCursorPosition(hConsole, COORD{ 0,0 });
 			newFrame = false;
